@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<title>BEST AI</title>
+<style>
+:root{--bg:#0b0f19;--chat:#111827;--panel:#1f2937;--border:#374151;--text:#f3f4f6;--muted:#9ca3af;--accent:#6366f1;--accent2:#4f46e5;--safe:env(safe-area-inset-bottom,16px)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--chat);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;height:60px;flex-shrink:0}
+.header-title{font-size:1.15rem;font-weight:800;letter-spacing:.5px;background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.status{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);background:var(--panel);padding:5px 10px;border-radius:20px;border:1px solid var(--border)}
+.dot{width:8px;height:8px;background:#10b981;border-radius:50%;box-shadow:0 0 8px #10b98880}
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.welcome{background:var(--chat);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;max-width:420px;margin:auto;box-shadow:0 10px 25px -5px #0005}
+.welcome h2{font-size:1.3rem;margin-bottom:8px}.welcome p{font-size:.9rem;color:var(--muted);margin-bottom:16px;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.chip{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:20px;font-size:.85rem;cursor:pointer}
+.message{display:flex;flex-direction:column;max-width:88%;animation:fade .2s ease-out}.user{align-self:flex-end}.assistant{align-self:flex-start}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.bubble{padding:12px 16px;border-radius:16px;font-size:.95rem;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}.user .bubble{background:var(--accent2);color:#fff;border-bottom-right-radius:4px}.assistant .bubble{background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:4px}
+.typing{display:flex;gap:4px;padding:4px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1.2s infinite ease-in-out}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}@keyframes b{0%,80%,100%{transform:scale(.3)}40%{transform:scale(1)}}
+form{background:var(--chat);border-top:1px solid var(--border);padding:12px 16px calc(12px + var(--safe));display:flex;align-items:flex-end;gap:10px;flex-shrink:0}
+.input-wrap{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:9px 16px}.input-wrap:focus-within{border-color:var(--accent)}
+textarea{width:100%;background:transparent;border:0;color:var(--text);font-size:16px;outline:none;resize:none;max-height:120px;line-height:1.4}textarea::placeholder{color:var(--muted)}
+button.send{width:42px;height:42px;flex-shrink:0;border:0;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:20px;cursor:pointer}button.send:disabled{background:var(--border);cursor:not-allowed}
+@media(min-width:768px){body{max-width:680px;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border);width:100%}}
+</style>
+</head>
+<body>
+<header><div class="header-title">BEST AI</div><div class="status"><span class="dot"></span><span>Online</span></div></header>
+<main id="chat">
+<section class="welcome" id="welcome"><h2>Üdvözöl a BEST AI! 👋</h2><p>Kérdezz bármit, vagy válassz az alábbi témák közül:</p>
+<div class="chips">
+<button class="chip" type="button" data-prompt="Írj egy viccet magyarul!">😄 Írj egy viccet</button>
+<button class="chip" type="button" data-prompt="Mit tudsz segíteni?">🤖 Mit tudsz?</button>
+<button class="chip" type="button" data-prompt="Írj egy rövid programozási példát JavaScriptben!">💻 Kódolás</button>
+</div></section></main>
+<form id="form">
+<div class="input-wrap"><textarea id="input" rows="1" maxlength="8000" placeholder="Írj egy üzenetet..." aria-label="Üzenet"></textarea></div>
+<button class="send" id="send" type="submit" disabled aria-label="Küldés">➤</button>
+</form>
+<script>
+const chat=document.querySelector('#chat'),input=document.querySelector('#input'),send=document.querySelector('#send'),form=document.querySelector('#form');
+let history=[],busy=false,typing=null;
+function resize(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px'}
+input.addEventListener('input',()=>{resize();send.disabled=!input.value.trim()||busy});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!send.disabled)submitMessage()}});
+form.addEventListener('submit',e=>{e.preventDefault();submitMessage()});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{input.value=b.dataset.prompt;send.disabled=false;submitMessage()}));
+function add(text,role){const wrap=document.createElement('div');wrap.className='message '+role;const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=text;wrap.append(bubble);chat.append(wrap);chat.scrollTop=chat.scrollHeight}
+function showTyping(){typing=document.createElement('div');typing.className='message assistant';const bubble=document.createElement('div');bubble.className='bubble';const dots=document.createElement('div');dots.className='typing';for(let i=0;i<3;i++)dots.append(document.createElement('i'));bubble.append(dots);typing.append(bubble);chat.append(typing);chat.scrollTop=chat.scrollHeight}
+async function submitMessage(){
+ const text=input.value.trim();if(!text||busy)return;
+ document.querySelector('#welcome')?.remove();add(text,'user');history.push({role:'user',content:text});
+ input.value='';resize();busy=true;send.disabled=true;showTyping();
+ try{
+  const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+  const data=await r.json().catch(()=>({error:'A szerver nem értelmezhető választ küldött.'}));
+  if(!r.ok)throw new Error(data.error||`Szerverhiba (${r.status})`);
+  if(!data.reply)throw new Error('Az AI üres választ adott.');
+  history.push({role:'assistant',content:data.reply});add(data.reply,'assistant');
+ }catch(err){add('Hiba: '+(err.message||'Nem sikerült kapcsolódni. Próbáld újra.'),'assistant')}
+ finally{typing?.remove();typing=null;busy=false;send.disabled=!input.value.trim()}
+}
+</script>
+</body></html>
